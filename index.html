@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presença - Amigos da Vida</title>
+    <style>
+        :root { --primary: #0056b3; --bg: #e3f2fd; }
+        body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        .tema-box { background: #f0f7ff; padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); margin: 20px 0; font-weight: bold; color: var(--primary); }
+        input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; }
+        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        #ticket { display: none; }
+        .ticket-recibo { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; background: #fafafa; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="app">
+    <img src="logo.png" style="height: 70px;">
+    <h2>Registro de Presença</h2>
+    
+    <div id="registro-form">
+        <p>Palestra de hoje:</p>
+        <div id="display-tema" class="tema-box">Carregando tema...</div>
+        
+        <input type="text" id="user-name" placeholder="Digite seu nome completo">
+        <button onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
+    </div>
+
+    <div id="ticket">
+        <h3 style="color: green;">✔ Presença Registrada!</h3>
+        <div class="ticket-recibo">
+            <p><strong id="res-nome"></strong></p>
+            <p>Palestra: <span id="res-tema"></span></p>
+            <p>Data: <span id="res-data"></span></p>
+        </div>
+        <button onclick="window.print()" style="background: #6c757d;">GERAR COMPROVANTE</button>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "SUA_URL_DO_WEB_APP_AQUI";
+    const URL_CSV = "SUA_URL_DA_PLANILHA_CSV_AQUI"; // Aba Programação
+
+    // Busca o tema do dia assim que abre o APP
+    async function buscarTema() {
+        try {
+            const res = await fetch(URL_CSV);
+            const data = await res.text();
+            const linhas = data.split('\n');
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            
+            for (let i = 1; i < linhas.length; i++) {
+                const col = linhas[i].split(',');
+                if (col[0].replace(/"/g, '').trim() === hoje) {
+                    document.getElementById('display-tema').innerText = col[1].replace(/"/g, '').trim();
+                    return;
+                }
+            }
+            document.getElementById('display-tema').innerText = "Nenhuma palestra para hoje.";
+            document.getElementById('user-name').style.display = "none";
+            document.querySelector('button').style.display = "none";
+        } catch (e) {
+            document.getElementById('display-tema').innerText = "Erro ao carregar tema.";
+        }
+    }
+
+    async function enviarPresenca() {
+        const nome = document.getElementById('user-name').value;
+        if (!nome) return alert("Por favor, digite seu nome.");
+
+        const btn = document.querySelector('button');
+        btn.innerText = "Registrando...";
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ nome: nome })
+            });
+            const res = await response.json();
+
+            if (res.result === "sucesso") {
+                document.getElementById('registro-form').style.display = "none";
+                document.getElementById('ticket').style.display = "block";
+                document.getElementById('res-nome').innerText = res.data.nome;
+                document.getElementById('res-tema').innerText = res.data.tema;
+                document.getElementById('res-data').innerText = res.data.data;
+            } else {
+                alert(res.data);
+                btn.innerText = "CONFIRMAR PRESENÇA";
+                btn.disabled = false;
+            }
+        } catch (e) {
+            alert("Erro: Verifique se está no horário (19h-22h)");
+        }
+    }
+
+    buscarTema();
+</script>
+</body>
+</html>

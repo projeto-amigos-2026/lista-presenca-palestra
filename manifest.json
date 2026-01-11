@@ -1,0 +1,16 @@
+{
+  "name": "Presença - Amigos da Vida",
+  "short_name": "Lista de Presença - Palestra",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#e3f2fd",
+  "theme_color": "#0056b3",
+  "description": "Registo de presença nas palestras Amigos da Vida",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
