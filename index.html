@@ -9,91 +9,86 @@
     <style>
         :root { --primary: #0056b3; --bg: #e3f2fd; }
         body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 450px; text-align: center; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 420px; text-align: center; }
         
-        /* AJUSTE PARA TEXTO LONGO */
-        .info-box { 
+        /* CORREÇÃO DO TEMA: Agora aceita qualquer tamanho de texto e mostra tudo */
+        .tema-box { 
             background: #f0f7ff; 
-            padding: 20px; 
-            border-radius: 12px; 
+            padding: 15px; 
+            border-radius: 10px; 
             border-left: 5px solid var(--primary); 
-            margin: 20px 0; 
-            text-align: left; /* Alinhado à esquerda para melhor leitura */
+            margin: 15px 0; 
+            font-weight: bold; 
+            color: var(--primary);
+            text-align: left;
+            white-space: normal; /* Garante que o texto longo quebre a linha */
+            line-height: 1.4;
         }
-        
-        .info-label { font-size: 0.8rem; color: #666; text-transform: uppercase; font-weight: bold; display: block; margin-top: 10px; }
-        .info-value { font-size: 1.05rem; color: var(--primary); font-weight: bold; white-space: normal; line-height: 1.4; display: block; }
 
+        .detalhes { font-size: 0.9rem; color: #555; margin-bottom: 10px; text-align: left; }
         input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
         #ticket { display: none; }
-        .ticket-recibo { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; background: #fafafa; text-align: left; }
+        .ticket-recibo { border: 2px dashed #ccc; padding: 15px; margin: 15px 0; background: #fafafa; text-align: left; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <img src="logo.png" style="height: 70px; margin-bottom: 10px;">
+    <img src="logo.png" style="height: 60px; margin-bottom: 10px;">
     <h2>Registro de Presença</h2>
     
     <div id="registro-form">
-        <div class="info-box">
-            <span class="info-label">Data:</span>
-            <span id="display-data" class="info-value">--/--/----</span>
-            
-            <span class="info-label">Tema da Palestra:</span>
-            <span id="display-tema" class="info-value">Carregando...</span>
-            
-            <span class="info-label">Palestrante:</span>
-            <span id="display-palestrante" class="info-value">...</span>
+        <div class="detalhes">
+            <strong>Data:</strong> <span id="display-data">Carregando...</span><br>
+            <strong>Palestrante:</strong> <span id="display-palestrante">Carregando...</span>
         </div>
+        <div id="display-tema" class="tema-box">Buscando tema na planilha...</div>
         
         <input type="text" id="user-name" placeholder="Digite seu nome completo">
         <button id="btn-confirmar" onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
     </div>
 
     <div id="ticket">
-        <h3 style="color: green;">✔ Presença Registrada!</h3>
+        <h3 style="color: green;">✔ Presença Confirmada!</h3>
         <div class="ticket-recibo">
-            <p><strong>Participante:</strong> <span id="res-nome"></span></p>
+            <p><strong>Nome:</strong> <span id="res-nome"></span></p>
             <p><strong>Palestra:</strong> <span id="res-tema"></span></p>
             <p><strong>Data:</strong> <span id="res-data"></span></p>
         </div>
-        <button onclick="gerarPDF()" style="background: #28a745;">BAIXAR COMPROVANTE (PDF)</button>
+        <button onclick="gerarPDF()" style="background: #28a745; margin-bottom: 10px;">BAIXAR PDF</button>
         <button onclick="location.reload()" style="background: #6c757d;">VOLTAR</button>
     </div>
 </div>
 
 <script>
-    // LINKS OBRIGATÓRIOS
     const SCRIPT_URL = "SUA_URL_DO_WEB_APP_AQUI";
     const URL_CSV = "SUA_URL_DA_PLANILHA_CSV_AQUI";
 
     let dadosRecibo = null;
 
-    async function buscarTema() {
+    async function buscarDados() {
         try {
             const res = await fetch(URL_CSV);
-            const dataText = await res.text();
-            const linhas = dataText.split('\n');
+            const text = await res.text();
+            const linhas = text.split('\n');
             const hoje = new Date().toLocaleDateString('pt-BR');
-            
+            document.getElementById('display-data').innerText = hoje;
+
             for (let i = 1; i < linhas.length; i++) {
                 const col = linhas[i].split(',');
-                const dataPlanilha = col[0].replace(/"/g, '').trim();
+                const dataPlanilha = col[0] ? col[0].replace(/"/g, '').trim() : "";
                 
                 if (dataPlanilha === hoje) {
-                    document.getElementById('display-data').innerText = dataPlanilha;
                     document.getElementById('display-tema').innerText = col[1].replace(/"/g, '').trim();
                     document.getElementById('display-palestrante').innerText = col[2] ? col[2].replace(/"/g, '').trim() : "Não informado";
                     return;
                 }
             }
-            document.getElementById('display-tema').innerText = "Nenhuma palestra agendada para hoje.";
-            document.getElementById('user-name').style.display = "none";
-            document.getElementById('btn-confirmar').style.display = "none";
+            document.getElementById('display-tema').innerText = "Palestra não encontrada para hoje na planilha.";
+            document.getElementById('display-palestrante').innerText = "---";
         } catch (e) {
-            document.getElementById('display-tema').innerText = "Erro ao carregar dados.";
+            document.getElementById('display-tema').innerText = "Erro ao conectar com a planilha.";
         }
     }
 
@@ -102,7 +97,7 @@
         if (!nome) return alert("Por favor, digite seu nome.");
 
         const btn = document.getElementById('btn-confirmar');
-        btn.innerText = "Registrando...";
+        btn.innerText = "Gravando...";
         btn.disabled = true;
 
         try {
@@ -120,34 +115,29 @@
                 document.getElementById('res-tema').innerText = res.data.tema;
                 document.getElementById('res-data').innerText = res.data.data;
             } else {
-                alert(res.data);
+                alert(res.data); // Aqui mostrará o erro de horário se houver
                 btn.innerText = "CONFIRMAR PRESENÇA";
                 btn.disabled = false;
             }
         } catch (e) {
-            alert("Erro: Verifique o horário (19h-22h) ou sua conexão.");
-            btn.disabled = false;
+            alert("Erro de conexão. Verifique o horário das 19h às 22h.");
             btn.innerText = "CONFIRMAR PRESENÇA";
+            btn.disabled = false;
         }
     }
 
     function gerarPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(20);
-        doc.setTextColor(0, 86, 179);
-        doc.text("Comprovante de Presença", 105, 30, { align: "center" });
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Participante: ${dadosRecibo.nome}`, 20, 50);
+        doc.text("Comprovante de Presença", 105, 20, { align: "center" });
+        doc.text(`Participante: ${dadosRecibo.nome}`, 20, 40);
         const temaSplit = doc.splitTextToSize(`Palestra: ${dadosRecibo.tema}`, 170);
-        doc.text(temaSplit, 20, 60);
-        doc.text(`Data: ${dadosRecibo.data}`, 20, 90);
-        doc.text("Amigos da Vida", 105, 110, { align: "center" });
-        doc.save(`Recibo_Presenca_${dadosRecibo.nome}.pdf`);
+        doc.text(temaSplit, 20, 50);
+        doc.text(`Data: ${dadosRecibo.data}`, 20, 80);
+        doc.save(`Presenca_${dadosRecibo.nome}.pdf`);
     }
 
-    buscarTema();
+    buscarDados();
 </script>
 </body>
 </html>
