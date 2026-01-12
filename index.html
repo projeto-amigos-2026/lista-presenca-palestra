@@ -9,21 +9,20 @@
     <style>
         :root { --primary: #0056b3; --bg: #e3f2fd; }
         body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 450px; text-align: center; }
         
-        /* CORREÇÃO DO TEXTO CURTO: Adicionado white-space e word-wrap */
-        .tema-box { 
+        /* AJUSTE PARA TEXTO LONGO */
+        .info-box { 
             background: #f0f7ff; 
-            padding: 15px; 
-            border-radius: 10px; 
+            padding: 20px; 
+            border-radius: 12px; 
             border-left: 5px solid var(--primary); 
             margin: 20px 0; 
-            font-weight: bold; 
-            color: var(--primary);
-            white-space: normal; 
-            word-wrap: break-word;
-            line-height: 1.4;
+            text-align: left; /* Alinhado à esquerda para melhor leitura */
         }
+        
+        .info-label { font-size: 0.8rem; color: #666; text-transform: uppercase; font-weight: bold; display: block; margin-top: 10px; }
+        .info-value { font-size: 1.05rem; color: var(--primary); font-weight: bold; white-space: normal; line-height: 1.4; display: block; }
 
         input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; box-sizing: border-box; }
         button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
@@ -38,15 +37,24 @@
     <h2>Registro de Presença</h2>
     
     <div id="registro-form">
-        <p>Palestra de hoje:</p>
-        <div id="display-tema" class="tema-box">Carregando tema...</div>
+        <div class="info-box">
+            <span class="info-label">Data:</span>
+            <span id="display-data" class="info-value">--/--/----</span>
+            
+            <span class="info-label">Tema da Palestra:</span>
+            <span id="display-tema" class="info-value">Carregando...</span>
+            
+            <span class="info-label">Palestrante:</span>
+            <span id="display-palestrante" class="info-value">...</span>
+        </div>
+        
         <input type="text" id="user-name" placeholder="Digite seu nome completo">
-        <button onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
+        <button id="btn-confirmar" onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
     </div>
 
     <div id="ticket">
         <h3 style="color: green;">✔ Presença Registrada!</h3>
-        <div class="ticket-recibo" id="recibo-print">
+        <div class="ticket-recibo">
             <p><strong>Participante:</strong> <span id="res-nome"></span></p>
             <p><strong>Palestra:</strong> <span id="res-tema"></span></p>
             <p><strong>Data:</strong> <span id="res-data"></span></p>
@@ -58,30 +66,34 @@
 
 <script>
     // LINKS OBRIGATÓRIOS
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBjdFiyqmnF0xn3pXTwis1Dfg2NfLnkhFTlZrf5wfWisNAaNuzug5yaOIMQBRCNlAJ/exec";
-    const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFnZUgPMaLGY9YgQZA1SmoNnw0mPFcbGsez-bAaGta8PV20UXa3ibW_xzbD--hbR3ouQFIubuL5lsX/pub?gid=0&single=true&output=csv";
+    const SCRIPT_URL = "SUA_URL_DO_WEB_APP_AQUI";
+    const URL_CSV = "SUA_URL_DA_PLANILHA_CSV_AQUI";
 
     let dadosRecibo = null;
 
     async function buscarTema() {
         try {
             const res = await fetch(URL_CSV);
-            const data = await res.text();
-            const linhas = data.split('\n');
+            const dataText = await res.text();
+            const linhas = dataText.split('\n');
             const hoje = new Date().toLocaleDateString('pt-BR');
             
             for (let i = 1; i < linhas.length; i++) {
                 const col = linhas[i].split(',');
-                if (col[0].replace(/"/g, '').trim() === hoje) {
+                const dataPlanilha = col[0].replace(/"/g, '').trim();
+                
+                if (dataPlanilha === hoje) {
+                    document.getElementById('display-data').innerText = dataPlanilha;
                     document.getElementById('display-tema').innerText = col[1].replace(/"/g, '').trim();
+                    document.getElementById('display-palestrante').innerText = col[2] ? col[2].replace(/"/g, '').trim() : "Não informado";
                     return;
                 }
             }
             document.getElementById('display-tema').innerText = "Nenhuma palestra agendada para hoje.";
             document.getElementById('user-name').style.display = "none";
-            document.querySelector('button').style.display = "none";
+            document.getElementById('btn-confirmar').style.display = "none";
         } catch (e) {
-            document.getElementById('display-tema').innerText = "Erro ao carregar tema.";
+            document.getElementById('display-tema').innerText = "Erro ao carregar dados.";
         }
     }
 
@@ -89,7 +101,7 @@
         const nome = document.getElementById('user-name').value;
         if (!nome) return alert("Por favor, digite seu nome.");
 
-        const btn = document.querySelector('button');
+        const btn = document.getElementById('btn-confirmar');
         btn.innerText = "Registrando...";
         btn.disabled = true;
 
@@ -107,14 +119,13 @@
                 document.getElementById('res-nome').innerText = res.data.nome;
                 document.getElementById('res-tema').innerText = res.data.tema;
                 document.getElementById('res-data').innerText = res.data.data;
-                if (navigator.vibrate) navigator.vibrate(200);
             } else {
                 alert(res.data);
                 btn.innerText = "CONFIRMAR PRESENÇA";
                 btn.disabled = false;
             }
         } catch (e) {
-            alert("Erro: Verifique sua conexão ou se está no horário (19h-22h)");
+            alert("Erro: Verifique o horário (19h-22h) ou sua conexão.");
             btn.disabled = false;
             btn.innerText = "CONFIRMAR PRESENÇA";
         }
@@ -123,21 +134,16 @@
     function gerarPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         doc.setFontSize(20);
         doc.setTextColor(0, 86, 179);
         doc.text("Comprovante de Presença", 105, 30, { align: "center" });
-        
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
         doc.text(`Participante: ${dadosRecibo.nome}`, 20, 50);
-        
         const temaSplit = doc.splitTextToSize(`Palestra: ${dadosRecibo.tema}`, 170);
         doc.text(temaSplit, 20, 60);
-        
         doc.text(`Data: ${dadosRecibo.data}`, 20, 90);
         doc.text("Amigos da Vida", 105, 110, { align: "center" });
-        
         doc.save(`Recibo_Presenca_${dadosRecibo.nome}.pdf`);
     }
 
