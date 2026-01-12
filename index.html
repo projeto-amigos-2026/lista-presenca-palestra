@@ -5,47 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
     <title>Presença - Amigos da Vida</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root { --primary: #0056b3; --bg: #e3f2fd; }
         body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-        .tema-box { background: #f0f7ff; padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); margin: 20px 0; font-weight: bold; color: var(--primary); }
-        input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; }
-        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        
+        /* CORREÇÃO DO TEXTO CURTO: Adicionado white-space e word-wrap */
+        .tema-box { 
+            background: #f0f7ff; 
+            padding: 15px; 
+            border-radius: 10px; 
+            border-left: 5px solid var(--primary); 
+            margin: 20px 0; 
+            font-weight: bold; 
+            color: var(--primary);
+            white-space: normal; 
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         #ticket { display: none; }
-        .ticket-recibo { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; background: #fafafa; }
+        .ticket-recibo { border: 2px dashed #ccc; padding: 20px; margin: 20px 0; background: #fafafa; text-align: left; }
     </style>
 </head>
 <body>
 
-<div class="card" id="app">
-    <img src="logo.png" style="height: 70px;">
+<div class="card">
+    <img src="logo.png" style="height: 70px; margin-bottom: 10px;">
     <h2>Registro de Presença</h2>
     
     <div id="registro-form">
         <p>Palestra de hoje:</p>
         <div id="display-tema" class="tema-box">Carregando tema...</div>
-        
         <input type="text" id="user-name" placeholder="Digite seu nome completo">
         <button onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
     </div>
 
     <div id="ticket">
         <h3 style="color: green;">✔ Presença Registrada!</h3>
-        <div class="ticket-recibo">
-            <p><strong id="res-nome"></strong></p>
-            <p>Palestra: <span id="res-tema"></span></p>
-            <p>Data: <span id="res-data"></span></p>
+        <div class="ticket-recibo" id="recibo-print">
+            <p><strong>Participante:</strong> <span id="res-nome"></span></p>
+            <p><strong>Palestra:</strong> <span id="res-tema"></span></p>
+            <p><strong>Data:</strong> <span id="res-data"></span></p>
         </div>
-        <button onclick="window.print()" style="background: #6c757d;">GERAR COMPROVANTE</button>
+        <button onclick="gerarPDF()" style="background: #28a745;">BAIXAR COMPROVANTE (PDF)</button>
+        <button onclick="location.reload()" style="background: #6c757d;">VOLTAR</button>
     </div>
 </div>
 
 <script>
+    // LINKS OBRIGATÓRIOS
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBjdFiyqmnF0xn3pXTwis1Dfg2NfLnkhFTlZrf5wfWisNAaNuzug5yaOIMQBRCNlAJ/exec";
-    const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFnZUgPMaLGY9YgQZA1SmoNnw0mPFcbGsez-bAaGta8PV20UXa3ibW_xzbD--hbR3ouQFIubuL5lsX/pub?gid=0&single=true&output=csv"; // Aba Programação
+    const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFnZUgPMaLGY9YgQZA1SmoNnw0mPFcbGsez-bAaGta8PV20UXa3ibW_xzbD--hbR3ouQFIubuL5lsX/pub?gid=0&single=true&output=csv";
 
-    // Busca o tema do dia assim que abre o APP
+    let dadosRecibo = null;
+
     async function buscarTema() {
         try {
             const res = await fetch(URL_CSV);
@@ -60,7 +77,7 @@
                     return;
                 }
             }
-            document.getElementById('display-tema').innerText = "Nenhuma palestra para hoje.";
+            document.getElementById('display-tema').innerText = "Nenhuma palestra agendada para hoje.";
             document.getElementById('user-name').style.display = "none";
             document.querySelector('button').style.display = "none";
         } catch (e) {
@@ -84,19 +101,44 @@
             const res = await response.json();
 
             if (res.result === "sucesso") {
+                dadosRecibo = res.data;
                 document.getElementById('registro-form').style.display = "none";
                 document.getElementById('ticket').style.display = "block";
                 document.getElementById('res-nome').innerText = res.data.nome;
                 document.getElementById('res-tema').innerText = res.data.tema;
                 document.getElementById('res-data').innerText = res.data.data;
+                if (navigator.vibrate) navigator.vibrate(200);
             } else {
                 alert(res.data);
                 btn.innerText = "CONFIRMAR PRESENÇA";
                 btn.disabled = false;
             }
         } catch (e) {
-            alert("Erro: Verifique se está no horário (19h-22h)");
+            alert("Erro: Verifique sua conexão ou se está no horário (19h-22h)");
+            btn.disabled = false;
+            btn.innerText = "CONFIRMAR PRESENÇA";
         }
+    }
+
+    function gerarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(20);
+        doc.setTextColor(0, 86, 179);
+        doc.text("Comprovante de Presença", 105, 30, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Participante: ${dadosRecibo.nome}`, 20, 50);
+        
+        const temaSplit = doc.splitTextToSize(`Palestra: ${dadosRecibo.tema}`, 170);
+        doc.text(temaSplit, 20, 60);
+        
+        doc.text(`Data: ${dadosRecibo.data}`, 20, 90);
+        doc.text("Amigos da Vida", 105, 110, { align: "center" });
+        
+        doc.save(`Recibo_Presenca_${dadosRecibo.nome}.pdf`);
     }
 
     buscarTema();
