@@ -3,146 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="manifest.json">
     <title>Presença - Amigos da Vida</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root { --primary: #0056b3; --bg: #e3f2fd; }
-        body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 420px; text-align: center; }
+        body { font-family: sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
         
-        /* CORREÇÃO VISUAL: Área de informações expansível */
-        .info-container { text-align: left; margin: 15px 0; font-size: 0.95rem; }
-        .label { font-weight: bold; color: #555; display: block; margin-top: 10px; }
-        
+        .info-container { text-align: left; margin-bottom: 20px; }
+        .label { font-weight: bold; color: #666; font-size: 0.8rem; text-transform: uppercase; }
+        .value { color: var(--primary); font-weight: bold; display: block; margin-bottom: 10px; font-size: 1.1rem; }
+
+        /* TEMA: Agora configurado para expandir infinitamente conforme o texto */
         .tema-box { 
             background: #f0f7ff; 
             padding: 15px; 
             border-radius: 10px; 
             border-left: 5px solid var(--primary); 
-            margin: 10px 0; 
-            font-weight: bold; 
             color: var(--primary);
-            text-align: left;
-            /* CORREÇÃO DO TAMANHO: Permite que o texto ocupe quantas linhas precisar */
-            white-space: normal; 
-            line-height: 1.5;
+            font-weight: bold;
+            line-height: 1.6;
+            white-space: pre-wrap; /* Mantém as quebras de linha originais da planilha */
+            word-wrap: break-word;
             display: block;
         }
 
         input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 15px; font-size: 1rem; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        #ticket { display: none; }
-        .ticket-recibo { border: 2px dashed #ccc; padding: 15px; margin: 15px 0; background: #fafafa; text-align: left; }
+        button { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        #ticket { display: none; text-align: center; }
+        .recibo { border: 2px dashed #ccc; padding: 15px; text-align: left; margin: 15px 0; background: #fdfdfd; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <img src="logo.png" style="height: 60px; margin-bottom: 10px;">
-    <h2>Registro de Presença</h2>
-    
     <div id="registro-form">
+        <h2 style="text-align:center;">Registro de Presença</h2>
         <div class="info-container">
-            <span class="label">Data:</span>
-            <span id="display-data" style="color: var(--primary); font-weight: bold;">12/01/2026</span>
+            <span class="label">Data de Hoje:</span>
+            <span id="display-data" class="value">--/--/----</span>
             
             <span class="label">Palestrante:</span>
-            <span id="display-palestrante" style="color: var(--primary); font-weight: bold;">Carregando...</span>
+            <span id="display-palestrante" class="value">Carregando...</span>
 
             <span class="label">Tema da Palestra:</span>
-            <div id="display-tema" class="tema-box">Buscando tema completo na planilha...</div>
+            <div id="display-tema" class="tema-box">Buscando tema...</div>
         </div>
         
         <input type="text" id="user-name" placeholder="Digite seu nome completo">
-        <button id="btn-confirmar" onclick="enviarPresenca()">CONFIRMAR PRESENÇA</button>
+        <button id="btn-confirmar" onclick="enviar()">CONFIRMAR PRESENÇA</button>
     </div>
 
     <div id="ticket">
         <h3 style="color: green;">✔ Presença Confirmada!</h3>
-        <div class="ticket-recibo">
+        <div class="recibo">
             <p><strong>Nome:</strong> <span id="res-nome"></span></p>
-            <p><strong>Palestra:</strong> <span id="res-tema"></span></p>
+            <p><strong>Tema:</strong> <span id="res-tema"></span></p>
             <p><strong>Data:</strong> <span id="res-data"></span></p>
         </div>
-        <button onclick="gerarPDF()" style="background: #28a745; margin-bottom: 10px;">BAIXAR PDF</button>
+        <button onclick="gerarPDF()" style="background: #28a745; margin-bottom:10px;">BAIXAR COMPROVANTE</button>
         <button onclick="location.reload()" style="background: #6c757d;">VOLTAR</button>
     </div>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBjdFiyqmnF0xn3pXTwis1Dfg2NfLnkhFTlZrf5wfWisNAaNuzug5yaOIMQBRCNlAJ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBjdFiyqmnF0xn3pXTwis1Dfg2NfLnkhFTlZrf5wfWisNAaNuzug5yaOIMQBRCNlAJ/exec"; 
     const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFnZUgPMaLGY9YgQZA1SmoNnw0mPFcbGsez-bAaGta8PV20UXa3ibW_xzbD--hbR3ouQFIubuL5lsX/pub?gid=0&single=true&output=csv";
 
-    let dadosRecibo = null;
+    let dadosGlobais = null;
 
-    // Função melhorada para tratar vírgulas dentro das células
-    function parseCSV(text) {
-        const rows = [];
-        const regex = /(".*?"|[^",\s]+)(?=\s*,|\s*$)/g;
-        const lines = text.split('\n');
-        for (let line of lines) {
-            const matches = line.match(/"[^"]*"|[^,]+/g);
-            if (matches) {
-                rows.push(matches.map(m => m.replace(/^"|"$/g, '').trim()));
-            }
-        }
-        return rows;
-    }
+    async function carregarDados() {
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        document.getElementById('display-data').innerText = hoje;
 
-    async function buscarDados() {
-        try {
-            const res = await fetch(URL_CSV);
-            const text = await res.text();
-            const rows = parseCSV(text);
-            const hoje = new Date().toLocaleDateString('pt-BR');
-            document.getElementById('display-data').innerText = hoje;
-
-            for (let i = 1; i < rows.length; i++) {
-                const col = rows[i];
-                if (col[0] === hoje) {
-                    // Agora col[1] será o tema completo mesmo com vírgulas
-                    document.getElementById('display-tema').innerText = col[1];
-                    // col[2] será o palestrante corretamente
-                    document.getElementById('display-palestrante').innerText = col[2] || "Não informado";
-                    return;
+        Papa.parse(URL_CSV, {
+            download: true,
+            header: false,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const linhas = results.data;
+                for (let i = 1; i < linhas.length; i++) {
+                    if (linhas[i][0].trim() === hoje) {
+                        // A biblioteca PapaParse garante que:
+                        // linhas[i][1] seja SEMPRE o tema completo
+                        // linhas[i][2] seja SEMPRE o palestrante correto
+                        document.getElementById('display-tema').innerText = linhas[i][1];
+                        document.getElementById('display-palestrante').innerText = linhas[i][2] || "Não informado";
+                        return;
+                    }
                 }
+                document.getElementById('display-tema').innerText = "Palestra não encontrada para hoje.";
             }
-            document.getElementById('display-tema').innerText = "Palestra não encontrada para hoje.";
-        } catch (e) {
-            document.getElementById('display-tema').innerText = "Erro ao ler a planilha.";
-        }
+        });
     }
 
-    async function enviarPresenca() {
+    async function enviar() {
         const nome = document.getElementById('user-name').value;
-        if (!nome) return alert("Por favor, digite seu nome.");
+        if(!nome) return alert("Digite seu nome!");
+        
         const btn = document.getElementById('btn-confirmar');
-        btn.innerText = "Gravando...";
-        btn.disabled = true;
+        btn.innerText = "Processando..."; btn.disabled = true;
 
         try {
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ nome: nome })
-            });
-            const res = await response.json();
-            if (res.result === "sucesso") {
-                dadosRecibo = res.data;
-                document.getElementById('registro-form').style.display = "none";
-                document.getElementById('ticket').style.display = "block";
-                document.getElementById('res-nome').innerText = res.data.nome;
-                document.getElementById('res-tema').innerText = res.data.tema;
-                document.getElementById('res-data').innerText = res.data.data;
+            const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ nome: nome }) });
+            const json = await res.json();
+            if (json.result === "sucesso") {
+                dadosGlobais = json.data;
+                document.getElementById('registro-form').style.display = 'none';
+                document.getElementById('ticket').style.display = 'block';
+                document.getElementById('res-nome').innerText = json.data.nome;
+                document.getElementById('res-tema').innerText = json.data.tema;
+                document.getElementById('res-data').innerText = json.data.data;
             } else {
-                alert(res.data);
-                btn.innerText = "CONFIRMAR PRESENÇA";
-                btn.disabled = false;
+                alert(json.data); btn.innerText = "CONFIRMAR PRESENÇA"; btn.disabled = false;
             }
         } catch (e) {
-            alert("Erro de conexão ou fora do horário (19h-22h).");
-            btn.disabled = false;
-            btn.innerText = "CONFIRMAR PRESENÇA";
+            alert("Erro de horário ou conexão."); btn.disabled = false;
         }
     }
 
@@ -150,14 +127,13 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.text("Comprovante de Presença", 105, 20, { align: "center" });
-        doc.text(`Participante: ${dadosRecibo.nome}`, 20, 40);
-        const temaSplit = doc.splitTextToSize(`Palestra: ${dadosRecibo.tema}`, 170);
+        doc.text(`Nome: ${dadosGlobais.nome}`, 20, 40);
+        const temaSplit = doc.splitTextToSize(`Tema: ${dadosGlobais.tema}`, 170);
         doc.text(temaSplit, 20, 50);
-        doc.text(`Data: ${dadosRecibo.data}`, 20, 90);
-        doc.save(`Presenca_${dadosRecibo.nome}.pdf`);
+        doc.save("Presenca.pdf");
     }
 
-    buscarDados();
+    carregarDados();
 </script>
 </body>
 </html>
